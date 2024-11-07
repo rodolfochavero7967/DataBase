@@ -12,7 +12,7 @@ GROUP BY Orders.OrderID;
 
 Modificaciones:
 
-La expresión SUM(CASE WHEN OD.Quantity > 10 THEN OD.Quantity * OD.UnitPrice ELSE 0 END) calcula el TotalPrice solo para los artículos con Quantity > 10, reduciendo cálculos innecesarios.
+La parte SUM(CASE WHEN OD.Quantity > 10 THEN OD.Quantity * OD.UnitPrice ELSE 0 END) calcula el TotalPrice solo para los artículos con Quantity > 10, reduciendo operaciones innecesarias.
 
 La parte de HAVING SUM(CASE WHEN OD.Quantity > 10 THEN 1 ELSE 0 END) > 0 asegura que solo se incluyan pedidos con al menos un artículo que tenga Quantity > 10.
 HAVING se aplica después de GROUP BY, por lo que es más eficiente que un WHERE en este caso.
