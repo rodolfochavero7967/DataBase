@@ -1,0 +1,106 @@
+Base de Datos
+
+Consulta de pedidos: recupera pedidos con muchos artículos y calcula el precio total.
+
+Original
+
+SELECT Orders.OrderID, SUM(OrderDetails.Quantity * OrderDetails.UnitPrice) AS TotalPrice
+FROM Orders
+JOIN OrderDetails ON Orders.OrderID = OrderDetails.OrderID
+WHERE OrderDetails.Quantity > 10
+GROUP BY Orders.OrderID;
+
+Modificaciones:
+
+La expresión SUM(CASE WHEN OD.Quantity > 10 THEN OD.Quantity * OD.UnitPrice ELSE 0 END) calcula el TotalPrice solo para los artículos con Quantity > 10, reduciendo cálculos innecesarios.
+
+La parte de HAVING SUM(CASE WHEN OD.Quantity > 10 THEN 1 ELSE 0 END) > 0 asegura que solo se incluyan pedidos con al menos un artículo que tenga Quantity > 10.
+HAVING se aplica después de GROUP BY, por lo que es más eficiente que un WHERE en este caso.
+
+Se incluye ROUND para limitar el resultado de TotalPrice a dos decimales y mejorar la legibilidad.
+
+SELECT O.OrderID, 
+       ROUND(SUM(CASE WHEN OD.Quantity > 10 THEN OD.Quantity * OD.UnitPrice ELSE 0 END), 2) AS TotalPrice
+FROM Orders AS O
+JOIN OrderDetails AS OD ON O.OrderID = OD.OrderID
+GROUP BY O.OrderID
+HAVING SUM(CASE WHEN OD.Quantity > 10 THEN 1 ELSE 0 END) > 0;
+
+-------------------------------------------------------------------------------------------------------------------------
+
+Consulta de cliente: encuentre todos los clientes de Londres y ordene por nombre de cliente.
+
+Original
+
+SELECT CustomerName FROM Customers WHERE City = 'London' ORDER BY CustomerName;
+
+
+Modificaiones:
+
+Creo que primero se tiene que craer un idice, para hacer la busqueda mas rapida ya que por lso registros puede ser muy tardada. asi como mejora el ordenamiento
+
+CREATE INDEX idx_customers_city_name ON Customers(City, CustomerName);
+
+Despues un Order_by ya que el indice utiliza tanto el where como el order by para evitar escanear toda la tabla y un limit para acotar resultados.
+
+
+SELECT CustomerName 
+FROM Customers 
+WHERE City = 'London' 
+ORDER BY CustomerName
+LIMIT 100;
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+No sql
+
+Consulta de publicaciones de usuario: recupera las publicaciones activas más populares y muestra su título y número de “Me gusta”.
+
+Original
+
+db.posts
+  .find({ status: "active" }, { title: 1, likes: 1 })
+  .sort({ likes: -1 });
+
+
+Mejoras:
+
+  Para esta consulta tambien seria bueno crear un indice para mejorar co mpuesto asi mejora el filtro, un limit() para las publicaciones mas populares,
+  para la proyeccion se puede excuilr el ID cuando no es necesario.
+
+
+  db.posts.createIndex({ status: 1, likes: -1 });
+
+
+  db.posts
+  .find({ status: "active" }, { title: 1, likes: 1, _id: 0 })
+  .sort({ likes: -1 })
+  .limit(10);
+----------------------------------------------------------------------------------------------------------------
+
+
+Original 
+
+Agregación de datos de usuario: resuma la cantidad de usuarios activos por ubicación.
+
+db.users.aggregate([
+  { $match: { status: "active" } },
+  { $group: { _id: "$location", totalUsers: { $sum: 1 } } },
+]);
+
+
+Modificaiones:
+
+Aqui nuevamente usamos un indiice compuesto para mejorar el filtrado para los docuemntos con estatus y agruparlos por location,si los documentos users contienen muchos campos, agregar un $project antes del $match para limitar los datos a solo status y location puede mejorar el rendimiento, asi el indice para optimizar $match y filtrar rápidamente a los usuarios activos, evitando la necesidad de un escaneo completo de la colección.
+
+
+db.users.createIndex({ status: 1, location: 1 });
+
+db.users.aggregate([
+  { $project: { status: 1, location: 1 } },  // Opcional para reducir campos innecesarios
+  { $match: { status: "active" } },
+  { $group: { _id: "$location", totalUsers: { $sum: 1 } } }
+]);
+
